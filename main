@@ -15,7 +15,7 @@ import os
 with open("config.json") as config_json:
     config = json.load(config_json)
     for dataset in config["datasets"]:
-        files=os.listdir("../testdata")
+        files=os.listdir(dataset["dir"])
         dest=os.environ["BRAINLIFE_ARCHIVE"]+"/"+dataset["project"]
         try: 
             os.makedirs(dest)
@@ -26,6 +26,6 @@ with open("config.json") as config_json:
                 raise
         tarname=dest+"/"+dataset["id"]+".tar"
         print(tarname)
-        cmd=["tar", "cvf", tarname, "-C", "../testdata"]
+        cmd=["tar", "cvf", tarname, "-C", dataset["dir"]]
         cmd.extend(files)
         subprocess.call(cmd)
