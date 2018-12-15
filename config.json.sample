@@ -1,0 +1,9 @@
+{
+	"datasets": [
+		{
+			"project": "testproj",
+			"id": "testid",
+			"dir": "testdata"
+		}
+	]
+}

@@ -1,0 +1,31 @@
+#!/bin/env python
+
+#PBS -l nodes=1:ppn=1
+#PBS -l vmem=1gb
+#PBS -l walltime=00:05:00
+#PBS -N archive
+#PBS -q normal
+#PBS -A TG-DBS170009
+
+import json
+import subprocess
+import errno
+import os
+
+with open("config.json") as config_json:
+    config = json.load(config_json)
+    for dataset in config["datasets"]:
+        files=os.listdir("../testdata")
+        dest=os.environ["BRAINLIFE_ARCHIVE"]+"/"+dataset["project"]
+        try: 
+            os.makedirs(dest)
+        except OSError as exc:
+            if exc.errno == errno.EEXIST and os.path.isdir(dest):
+                pass
+            else:
+                raise
+        tarname=dest+"/"+dataset["id"]+".tar"
+        print(tarname)
+        cmd=["tar", "cvf", tarname, "-C", "../testdata"]
+        cmd.extend(files)
+        subprocess.call(cmd)
