@@ -24,8 +24,12 @@ with open("config.json") as config_json:
                 pass
             else:
                 raise
-        tarname=dest+"/"+dataset["id"]+".tar"
-        print(tarname)
+        tarname=dest+"/"+dataset["dataset"]["id"]+".tar"
+
+        #store .brainlife.json
+        with open(dataset["dir"]+"/.brainlife.json", "w") as bljson:
+            json.dump(dataset["dataset"], bljson)
+
         cmd=["tar", "cvf", tarname, "-C", dataset["dir"]]
         cmd.extend(files)
         subprocess.call(cmd)

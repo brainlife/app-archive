@@ -2,7 +2,10 @@
 	"datasets": [
 		{
 			"project": "testproj",
-			"id": "testid",
+			"dataset": {
+                "id": "testid",
+                "things": "here"
+            },
 			"dir": "testdata"
 		}
 	]
