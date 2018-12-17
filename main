@@ -55,6 +55,13 @@ with open("config.json") as config_json:
                     print("required file is missing:"+dataset["dir"]+"/"+path)
                     sys.exit(1)
 
+            #dedupe the files
+            files_dedupe = []
+            for f in files:
+              if f not in files_dedupe:
+                files_dedupe.append(f)
+            files = files_dedupe
+
         else:
             #grab everything under "dir"
             files=os.listdir(dataset["dir"])
