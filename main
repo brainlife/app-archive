@@ -34,7 +34,7 @@ with open("config.json") as config_json:
 
         if "files" in dataset and dataset["files"] != None:
             #old archiver had "files["dataset"]" listing all files to archive
-            files=[]
+            files=[".brainlife.json"]
             for file in dataset["files"]:
                 if "filename" in file:
                     path = file["filename"]
