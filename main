@@ -24,7 +24,7 @@ with open("config.json") as config_json:
                 pass
             else:
                 raise
-        tarname=dest+"/"+dataset["dataset"]["id"]+".tar"
+        tarname=dest+"/"+dataset["dataset"]["_id"]+".tar"
 
         #store .brainlife.json
         with open(dataset["dir"]+"/.brainlife.json", "w") as bljson:
