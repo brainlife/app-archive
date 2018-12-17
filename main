@@ -46,7 +46,11 @@ with open("config.json") as config_json:
                         path = dataset["files_override"][file["id"]]
 
                 if os.path.exists(dataset["dir"]+"/"+path):
-                    cmd.append(path)
+                    if path == ".":
+                        #if path is ".", let's expand to the list of files so that we can avoid having "." as root 
+                        files.extend(os.listdir(dataset["dir"]))
+                    else:
+                        files.append(path)
                 elif file["required"] == True:
                     print("required file is missing:"+dataset["dir"]+"/"+path)
                     sys.exit(1)
