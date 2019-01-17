@@ -15,6 +15,7 @@ import sys
 
 with open("config.json") as config_json:
     config = json.load(config_json)
+    product = {}
     for dataset in config["datasets"]:
         dest=os.environ["BRAINLIFE_ARCHIVE"]+"/"+dataset["project"]
         try: 
@@ -66,6 +67,15 @@ with open("config.json") as config_json:
             #grab everything under "dir"
             files=os.listdir(dataset["dir"])
 
+        #archive!
         cmd.extend(files)
         print(cmd)
         subprocess.call(cmd)
+
+        #get file size 
+        product[dataset["dataset"]["_id"]] = {"size":os.path.getsize(tarname)}
+
+    with open('product.json', 'w') as productjson:
+        json.dump(product, productjson)
+
+    print("all done")

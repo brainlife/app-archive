@@ -3,7 +3,7 @@
 		{
 			"project": "testproj",
 			"dataset": {
-                "id": "testid",
+                "_id": "testid",
                 "things": "here"
             },
 			"dir": "testdata"
