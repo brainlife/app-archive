@@ -6,7 +6,17 @@
                 "_id": "testid",
                 "things": "here"
             },
-			"dir": "testdata"
+			"dir": "testdata",
+            "_files": [
+                {
+                    "id": "another",
+                    "dirname": "subdir",
+                    "required": true
+                }
+            ],
+            "_files_override": {
+                "another": "."
+            }
 		}
 	]
 }

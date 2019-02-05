@@ -26,16 +26,28 @@ with open("config.json") as config_json:
             else:
                 raise
 
-        #store .brainlife.json
-        with open(dataset["dir"]+"/.brainlife.json", "w") as bljson:
-            json.dump(dataset["dataset"], bljson)
-
         tarname=dest+"/"+dataset["dataset"]["_id"]+".tar"
-        cmd=["tar", "hcvf", tarname, "-C", dataset["dir"]]
+        cmd=["tar", "hcvf", tarname]
+        files=[]
 
         if "files" in dataset and dataset["files"] != None:
-            #old archiver had "files["dataset"]" listing all files to archive
-            files=[".brainlife.json"]
+            #old archive method used !
+            #we need to re-stage everything (using dataset._id as staging dirname) so that we can handle file_override
+            #let's use dataset id as staging dir inside input directory (bad?)
+            stagedir = dataset["dir"]+"/"+dataset["dataset"]["_id"]
+            print("creating stagedir", stagedir)
+            try: 
+                os.makedirs(stagedir)
+            except OSError as exc:
+                if exc.errno == errno.EEXIST and os.path.isdir(dest):
+                    pass
+                else:
+                    raise
+
+            files.append("-C")
+            files.append(stagedir)
+
+            #now we need to set symlink for all file/dir
             for file in dataset["files"]:
                 if "filename" in file:
                     path = file["filename"]
@@ -43,22 +55,31 @@ with open("config.json") as config_json:
                     path = file["dirname"]
 
                 if "files_override" in dataset and dataset["files_override"] != None:
+                    print("looking.........")
                     if file["id"] in dataset["files_override"]:
-                        src = dataset["files_override"][file["id"]]
-                        try:
-                            print("files_override:", src, path)
-                            os.symlink(src, dataset["dir"]+"/"+path)
-                        except OSError, e:
-                            if e.errno == errno.EEXIST:
-                                print("symlink already exists")
-                            else:
-                                raise e
-                if os.path.exists(dataset["dir"]+"/"+path):
-                    if path == ".":
-                        #if path is ".", let's expand to the list of files so that we can avoid having "." as root 
-                        files.extend(os.listdir(dataset["dir"]))
+                        path = dataset["files_override"][file["id"]]
+                        print("file override", file["id"], path)
+
+                if path == ".":
+                    #TODO - I should clear previous found paths
+                    print("dot(.) path used.. using all local files")
+                    files.extend(os.listdir(dataset["dir"]))
+                    break         
+        
+                link_path = stagedir+"/"+path;
+                print("making symlink src:", "../"+path, "dest:", link_path, "(dest is the link to create)")
+                try: 
+                    os.symlink("../"+path, link_path)
+                except OSError as exc:
+                    if exc.errno == errno.EEXIST:
+                        os.remove(link_path)
+                        os.symlink("../"+path, link_path)
                     else:
-                        files.append(path)
+                        raise
+
+                if os.path.exists(dataset["dir"]+"/"+path):
+                    files.append(path)
+
                 elif file["required"] == True:
                     print("required file is missing:"+dataset["dir"]+"/"+path)
                     sys.exit(1)
@@ -70,14 +91,30 @@ with open("config.json") as config_json:
                 files_dedupe.append(f)
             files = files_dedupe
 
+            #store .brainlife.json
+            with open(stagedir+"/.brainlife.json", "w") as bljson:
+                json.dump(dataset["dataset"], bljson)
+
         else:
-            #grab everything under "dir"
-            files=os.listdir(dataset["dir"])
+            #new method is clean! just grab everything under "dir"
+            files.append("-C")
+            files.append(dataset["dir"])
+            for file in os.listdir(dataset["dir"]):
+                files.append(file)
+
+            #store .brainlife.json
+            with open(dataset["dir"]+"/.brainlife.json", "w") as bljson:
+                json.dump(dataset["dataset"], bljson)
+
+        files.append(".brainlife.json")
 
         #archive!
         cmd.extend(files)
         print(cmd)
         subprocess.call(cmd)
+        
+        #print("archived dataset content")
+        #print(subprocess.check_output(["tar","-tf",tarname]))
 
         #get file size 
         product[dataset["dataset"]["_id"]] = {"size":os.path.getsize(tarname)}
