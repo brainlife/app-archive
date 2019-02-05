@@ -45,9 +45,14 @@ with open("config.json") as config_json:
                 if "files_override" in dataset and dataset["files_override"] != None:
                     if file["id"] in dataset["files_override"]:
                         src = dataset["files_override"][file["id"]]
-                        os.symlink(src, dataset["dir"]+"/"+path)
-                        print("files_override:", src, path)
-
+                        try:
+                            print("files_override:", src, path)
+                            os.symlink(src, dataset["dir"]+"/"+path)
+                        except OSError, e:
+                            if e.errno == errno.EEXIST:
+                                print("symlink already exists")
+                            else:
+                                raise e
                 if os.path.exists(dataset["dir"]+"/"+path):
                     if path == ".":
                         #if path is ".", let's expand to the list of files so that we can avoid having "." as root 
