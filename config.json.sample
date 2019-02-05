@@ -7,15 +7,20 @@
                 "things": "here"
             },
 			"dir": "testdata",
-            "_files": [
+            "files": [
                 {
                     "id": "another",
                     "dirname": "subdir",
                     "required": true
+                },
+                {
+                    "id": "missing",
+                    "dirname": "missing",
+                    "required": false
                 }
             ],
-            "_files_override": {
-                "another": "."
+            "files_override": {
+                "another": "subdir2"
             }
 		}
 	]

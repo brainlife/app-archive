@@ -54,13 +54,14 @@ with open("config.json") as config_json:
                 else:
                     path = file["dirname"]
 
+                over_path = path
                 if "files_override" in dataset and dataset["files_override"] != None:
                     print("looking.........")
                     if file["id"] in dataset["files_override"]:
-                        path = dataset["files_override"][file["id"]]
+                        over_path = dataset["files_override"][file["id"]]
                         print("file override", file["id"], path)
 
-                if path == ".":
+                if over_path == ".":
                     #TODO - I should clear previous found paths
                     print("dot(.) path used.. using all local files")
                     files.extend(os.listdir(dataset["dir"]))
@@ -69,15 +70,15 @@ with open("config.json") as config_json:
                 link_path = stagedir+"/"+path;
                 print("making symlink src:", "../"+path, "dest:", link_path, "(dest is the link to create)")
                 try: 
-                    os.symlink("../"+path, link_path)
+                    os.symlink("../"+over_path, link_path)
                 except OSError as exc:
                     if exc.errno == errno.EEXIST:
                         os.remove(link_path)
-                        os.symlink("../"+path, link_path)
+                        os.symlink("../"+over_path, link_path)
                     else:
                         raise
 
-                if os.path.exists(dataset["dir"]+"/"+path):
+                if os.path.exists(dataset["dir"]+"/"+over_path):
                     files.append(path)
 
                 elif file["required"] == True:
