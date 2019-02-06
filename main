@@ -66,6 +66,18 @@ with open("config.json") as config_json:
                     link_path = stagedir+"/"+path
                     src_path = "../"+over_path
 
+                print("making sure stagedir exists", stagedir)
+                #I only have to do this once, but I have to do it before I create the first symlink
+                #I also don't know if I have over_path == "." until I start looping.. 
+                #let's just check this for each file
+                try: 
+                    os.makedirs(stagedir)
+                except OSError as exc:
+                    if exc.errno == errno.EEXIST:
+                        pass
+                    else:
+                        raise
+
                 print("making symlink src:", src_path, "dest:", link_path, "(dest is the link to create)")
                 try: 
                     os.symlink(src_path, link_path)
@@ -83,14 +95,6 @@ with open("config.json") as config_json:
                     print("required file is missing:"+dataset["dir"]+"/"+path)
                     sys.exit(1)
 
-            print("making sure stagedir exists", stagedir)
-            try: 
-                os.makedirs(stagedir)
-            except OSError as exc:
-                if exc.errno == errno.EEXIST:
-                    pass
-                else:
-                    raise
 
             #dedupe the files
             files_dedupe = []
