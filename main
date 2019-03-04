@@ -53,30 +53,36 @@ with open("config.json") as config_json:
                         over_path = dataset["files_override"][file["id"]]
                         print("file override", file["id"], over_path)
 
-                if over_path == ".":
-                    print("dot(.) path used.. using all local files")
+                if path == ".":
                     stagedir=dataset["dir"]
+                    if over_path != ".":
+                        stagedir += "/"+over_path
+                    print("dot(.) path used.. using all local files as %s" % stagedir)
                     files = ["-C", stagedir]
-                    files.extend(os.listdir(dataset["dir"]))
+                    files.extend(os.listdir(stagedir))
                     break         
-       
-                link_path = stagedir
+      
                 src_path = over_path
+                link_path = stagedir
                 if path != ".":
-                    link_path = stagedir+"/"+path
                     src_path = "../"+over_path
+                    link_path = stagedir+"/"+path
 
-                    print("making sure stagedir exists", stagedir)
-                    #I only have to do this once, but I have to do it before I create the first symlink
-                    #I also don't know if I have over_path == "." until I start looping.. 
-                    #let's just check this for each file
-                    try: 
-                        os.makedirs(stagedir)
-                    except OSError as exc:
-                        if exc.errno == errno.EEXIST:
-                            pass
-                        else:
-                            raise
+                print("making sure stagedir exists", stagedir)
+                #I only have to do this once, but I have to do it before I create the first symlink
+                #I also don't know if I have over_path == "." until I start looping.. 
+                #let's just check this for each file
+                try: 
+                    os.makedirs(stagedir)
+                except OSError as exc:
+                    if exc.errno == errno.EEXIST:
+                        pass
+                    else:
+                        raise
+
+                #if path == "." and over_path != ".":
+                #    src_path = "../"+over_path
+                #    link_path = stagedir+"/"+over_path
 
                 print("making symlink src:", src_path, "dest:", link_path, "(dest is the link to create)")
                 try: 
@@ -95,7 +101,6 @@ with open("config.json") as config_json:
                     print("required file is missing:"+dataset["dir"]+"/"+path)
                     sys.exit(1)
 
-
             #dedupe the files
             files_dedupe = []
             for f in files:
@@ -104,6 +109,7 @@ with open("config.json") as config_json:
             files = files_dedupe
 
             #store .brainlife.json
+            print("writing .brainlife.json at %s" % stagedir)
             with open(stagedir+"/.brainlife.json", "w") as bljson:
                 json.dump(dataset["dataset"], bljson)
 
@@ -122,10 +128,10 @@ with open("config.json") as config_json:
 
         #archive!
         cmd.extend(files)
-        print(cmd)
+        #print(cmd)
         subprocess.call(cmd)
         
-        #print("archived dataset content")
+        #print("archived to %s" % tarname)
         #print(subprocess.check_output(["tar","-tf",tarname]))
 
         #get file size 
