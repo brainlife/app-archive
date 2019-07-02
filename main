@@ -4,8 +4,8 @@
 #PBS -l vmem=1gb
 #PBS -l walltime=00:05:00
 #PBS -N archive
-#PBS -q normal
-#PBS -A TG-DBS170009
+##PBS -q normal
+##PBS -A TG-DBS170009
 
 import json
 import subprocess
