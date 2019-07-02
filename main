@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/env python
 
 #PBS -l nodes=1:ppn=1
 #PBS -l vmem=1gb
