@@ -1,0 +1,17 @@
+#!/bin/bash
+
+#people often forgets to set exbit on main..
+chmod +x main
+
+#to allow restart
+rm -f exit-code
+rm -f _smon.out
+
+echo "nohup-ing main" 
+#can't put time on nohup
+nohup bash -c "smon & smonpid=\$!;
+    ./main; 
+    echo \$? > exit-code;
+    kill \$smonpid" > output.log 2> error.log &
+echo $! > pid
+

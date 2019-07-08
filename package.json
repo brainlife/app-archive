@@ -1,0 +1,7 @@
+{
+  "abcd": {
+    "start": "./start",
+    "stop": "./stop",
+    "status": "./status"
+  }
+}
