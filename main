@@ -109,9 +109,9 @@ with open("config.json") as config_json:
             files = files_dedupe
 
             #store .brainlife.json
-            print("writing .brainlife.json at %s" % stagedir)
-            with open(stagedir+"/.brainlife.json", "w") as bljson:
-                json.dump(dataset["dataset"], bljson)
+            #print("writing .brainlife.json at %s" % stagedir)
+            #with open(stagedir+"/.brainlife.json", "w") as bljson:
+            #    json.dump(dataset["dataset"], bljson)
 
         else:
             #new method is clean! just grab everything under "dir"
@@ -121,10 +121,10 @@ with open("config.json") as config_json:
                 files.append(file)
 
             #store .brainlife.json
-            with open(dataset["dir"]+"/.brainlife.json", "w") as bljson:
-                json.dump(dataset["dataset"], bljson)
+            #with open(dataset["dir"]+"/.brainlife.json", "w") as bljson:
+            #    json.dump(dataset["dataset"], bljson)
 
-        files.append(".brainlife.json")
+        #files.append(".brainlife.json")
 
         #archive!
         cmd.extend(files)
