@@ -2,6 +2,7 @@
 	"datasets": [
 		{
 			"project": "testproj",
+            "storage": "wrangler",
 			"dataset": {
                 "_id": "testid",
                 "things": "here"

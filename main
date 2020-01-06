@@ -17,7 +17,8 @@ with open("config.json") as config_json:
     config = json.load(config_json)
     product = {}
     for dataset in config["datasets"]:
-        dest=os.environ["BRAINLIFE_ARCHIVE"]+"/"+dataset["project"]
+        storage=dataset["storage"]
+        dest=os.environ["BRAINLIFE_ARCHIVE_"+storage]+"/"+dataset["project"]
         try: 
             os.makedirs(dest)
         except OSError as exc:
