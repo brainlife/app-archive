@@ -1,28 +1,25 @@
 {
-	"datasets": [
-		{
-			"project": "testproj",
-            "storage": "wrangler",
-			"dataset": {
-                "_id": "testid",
-                "things": "here"
-            },
-			"dir": "testdata",
-            "files": [
-                {
-                    "id": "another",
-                    "dirname": "subdir",
-                    "required": true
-                },
-                {
-                    "id": "missing",
-                    "dirname": "missing",
-                    "required": false
-                }
-            ],
-            "files_override": {
-                "another": "subdir2"
-            }
-		}
-	]
+  "datasets": [
+    {
+      "project": "testproj",
+      "storage": "wrangler",
+      "dataset_id": "testid",
+      "dir": "testdata",
+      "files": [
+        {
+          "id": "another",
+          "dirname": "subdir",
+          "required": true
+        },
+        {
+          "id": "missing",
+          "dirname": "missing",
+          "required": false
+        }
+      ],
+      "files_override": {
+        "another": "subdir2"
+      }
+    }
+  ]
 }
