@@ -1,5 +1,5 @@
 {
-  "abcd": {
+  "abcd-disabled": {
     "start": "./start",
     "stop": "./stop",
     "status": "./status"
