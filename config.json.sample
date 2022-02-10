@@ -2,7 +2,7 @@
   "datasets": [
     {
       "project": "testproj",
-      "storage": "wrangler",
+      "storage": "xnat",
       "dataset_id": "testid",
       "dir": "testdata",
       "files": [
