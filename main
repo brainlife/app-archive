@@ -10,6 +10,8 @@ import subprocess
 import errno
 import os
 import sys
+import base64
+import requests
 
 with open("config.json") as config_json:
     config = json.load(config_json)
@@ -17,7 +19,53 @@ with open("config.json") as config_json:
 product = {}
 
 def handleXNAT(dataset):
-    print("TODO")
+    #decrypt xnat secret
+    openssl = subprocess.Popen(["openssl", "rsautl", "-inkey", "/home/brlife/.ssh/configEncrypt.key", "-decrypt"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    openssl.stdin.write(base64.b64decode(dataset["storage_config"]["secretEnc"]))
+    secret = openssl.communicate()[0]
+    openssl.stdin.close()
+
+    #pull all parameters we need to upload file to xnat
+    dataset_id=dataset["dataset_id"]
+    hostname=dataset["storage_config"]["hostname"]
+    token=dataset["storage_config"]["token"]
+    project=dataset["storage_config"]["project"]
+    datadir=dataset["dir"]
+
+    subject=dataset["meta"]["subject"]
+    session="nosession"
+    if dataset["meta"]["session"]:
+        session = dataset["meta"]["session"]
+    datatype_id=dataset["datatype_id"]
+
+    auth=(token, secret)
+
+    #create necessary container to upload files to
+    url=hostname+"/data/projects/"+project+"/subjects/"+subject
+    ret = requests.put(url, auth=auth)
+    print("creating sucject", ret)
+
+    url+="/experiments/"+session
+    ret = requests.put(url+"?xnat:mrSessionData/date=01/02/07", auth=auth)
+    print("creating session(experiment)", ret)
+
+    url+="/scans/"+dataset_id
+    ret = requests.put(url+"?xsiType=xnat:mrScanData&xnat:mrScanData/type="+datatype_id, auth=auth)
+    print("creating scan", ret)
+
+    #finally, we can upload the file (let it self extract)
+    dirname=os.path.dirname(datadir)
+    basename=os.path.basename(datadir)
+    zip_process = subprocess.Popen(["zip", "-r", "-", basename], stdout=subprocess.PIPE, cwd=dirname)
+    formdata = {
+        'upload': ('test.zip', zip_process.stdout),
+    }
+    params = {
+        'extract': True
+    }
+    url+="/files"
+    ret = requests.post(url, files=formdata, params=params, auth=auth)
+    print("uploading file", ret)
 
 def handleLocal(dataset, storage):
     dest=os.environ["BRAINLIFE_ARCHIVE_"+storage]+"/"+dataset["project"]
