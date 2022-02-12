@@ -32,10 +32,13 @@ def handleXNAT(dataset):
     project=dataset["storage_config"]["project"]
     datadir=dataset["dir"]
 
-    subject=dataset["meta"]["subject"]
+    subject=dataset["storage_config"]["meta"]["subject"]
+
+    #"nosession" must be agreed in app-archive / warehouse/config.index.js
     session="nosession"
-    if dataset["meta"]["session"]:
-        session = dataset["meta"]["session"]
+    if dataset["storage_config"]["meta"]["session"]:
+        session = dataset["storage_config"]["meta"]["session"]
+
     datatype_id=dataset["datatype_id"]
 
     auth=(token, secret)
