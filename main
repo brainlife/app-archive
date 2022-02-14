@@ -62,6 +62,7 @@ def handleXNAT(dataset):
     #dirname=os.path.dirname(datadir)
     #basename=os.path.basename(datadir)
     #zip_process = subprocess.Popen(["zip", "-r", "-", basename], stdout=subprocess.PIPE, cwd=dirname)
+    print("archiving", datadir)
     zip_process = subprocess.Popen(["zip", "-r", "-", "."], stdout=subprocess.PIPE, cwd=datadir)
     formdata = {
         'upload': ('test.zip', zip_process.stdout),
