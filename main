@@ -12,6 +12,7 @@ import os
 import sys
 import base64
 import requests
+from pathlib import Path
 
 with open("config.json") as config_json:
     config = json.load(config_json)
@@ -20,7 +21,7 @@ product = {}
 
 def handleXNAT(dataset):
     #decrypt xnat secret
-    openssl = subprocess.Popen(["openssl", "rsautl", "-inkey", "/home/brlife/.ssh/configEncrypt.key", "-decrypt"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    openssl = subprocess.Popen(["openssl", "rsautl", "-inkey", str(Path.home())+"/.ssh/configEncrypt.key", "-decrypt"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     openssl.stdin.write(base64.b64decode(dataset["storage_config"]["secretEnc"]))
     secret = openssl.communicate()[0]
     openssl.stdin.close()
@@ -30,6 +31,7 @@ def handleXNAT(dataset):
     hostname=dataset["storage_config"]["hostname"]
     token=dataset["storage_config"]["token"]
     project=dataset["storage_config"]["project"]
+    path=dataset["storage_config"]["path"]
     datadir=dataset["dir"]
 
     subject=dataset["storage_config"]["meta"]["subject"]
@@ -66,7 +68,7 @@ def handleXNAT(dataset):
     params = {
         'extract': True
     }
-    url+="/files"
+    url+="/"+path
     ret = requests.post(url, files=formdata, params=params, auth=auth)
     print("uploading file", ret)
 
