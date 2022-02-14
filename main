@@ -59,9 +59,10 @@ def handleXNAT(dataset):
     print("creating scan", ret)
 
     #finally, we can upload the file (let it self extract)
-    dirname=os.path.dirname(datadir)
-    basename=os.path.basename(datadir)
-    zip_process = subprocess.Popen(["zip", "-r", "-", basename], stdout=subprocess.PIPE, cwd=dirname)
+    #dirname=os.path.dirname(datadir)
+    #basename=os.path.basename(datadir)
+    #zip_process = subprocess.Popen(["zip", "-r", "-", basename], stdout=subprocess.PIPE, cwd=dirname)
+    zip_process = subprocess.Popen(["zip", "-r", "-", "."], stdout=subprocess.PIPE, cwd=datadir)
     formdata = {
         'upload': ('test.zip', zip_process.stdout),
     }
