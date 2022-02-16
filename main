@@ -55,7 +55,7 @@ def handleXNAT(dataset):
 
     url+="/experiments/"+session
     
-    now = datetime.datatime.fromisoformat(create_date)
+    now = datetime.datetime.fromisoformat(create_date)
     ret = requests.put(url+"?xnat:mrSessionData/date="+now.strftime("%x"), auth=auth)
     print("creating session(experiment)", ret)
 
