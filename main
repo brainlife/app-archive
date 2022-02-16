@@ -13,7 +13,8 @@ import sys
 import base64
 import requests
 from pathlib import Path
-import datetime
+from dateutil import parser
+
 
 with open("config.json") as config_json:
     config = json.load(config_json)
@@ -55,8 +56,8 @@ def handleXNAT(dataset):
 
     url+="/experiments/"+session
     
-    now = datetime.datetime.fromisoformat(create_date)
-    ret = requests.put(url+"?xnat:mrSessionData/date="+now.strftime("%x"), auth=auth)
+    date = parser.parse(create_date)
+    ret = requests.put(url+"?xnat:mrSessionData/date="+date.strftime("%x"), auth=auth)
     print("creating session(experiment)", ret)
 
     #https://wiki.xnat.org/display/XAPI/Image+Session+Scans+API
