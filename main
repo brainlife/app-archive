@@ -15,7 +15,6 @@ import requests
 from pathlib import Path
 from dateutil import parser
 
-
 with open("config.json") as config_json:
     config = json.load(config_json)
 
@@ -55,7 +54,7 @@ def handleXNAT(dataset):
     print("creating sucject", ret)
 
     url+="/experiments/"+session
-    
+
     date = parser.parse(create_date)
     ret = requests.put(url+"?xnat:mrSessionData/date="+date.strftime("%x"), auth=auth)
     print("creating session(experiment)", ret)
@@ -65,12 +64,9 @@ def handleXNAT(dataset):
     ret = requests.put(url+"?xsiType=xnat:mrScanData&xnat:mrScanData/type="+datatype_name+"&xnat:mrScanData/note"+datatype_id, auth=auth)
     print("creating scan", ret)
 
-    #finally, we can upload the file (let it self extract)
-    #dirname=os.path.dirname(datadir)
-    #basename=os.path.basename(datadir)
-    #zip_process = subprocess.Popen(["zip", "-r", "-", basename], stdout=subprocess.PIPE, cwd=dirname)
-    print("archiving", datadir)
+    print("zipping and uploading file", ret)
     zip_process = subprocess.Popen(["zip", "-r", "-", "."], stdout=subprocess.PIPE, cwd=datadir)
+
     formdata = {
         'upload': ('xnat.zip', zip_process.stdout),
     }
@@ -80,6 +76,15 @@ def handleXNAT(dataset):
     url+="/"+path
     ret = requests.post(url, files=formdata, params=params, auth=auth)
     print("uploading file", ret)
+
+    #upload provenance info
+    prov = requests.get(dataset["provURL"])
+    formdata = {
+        'upload': ('provenance.json', prov.raw)
+    }
+    ret = requests.post(url, files=formdata, auth=auth)
+    print("uploading prov file", ret)
+
 
 def handleLocal(dataset, storage):
     dest=os.environ["BRAINLIFE_ARCHIVE_"+storage]+"/"+dataset["project"]
@@ -113,7 +118,6 @@ def handleLocal(dataset, storage):
 
             over_path = path
             if "files_override" in dataset and dataset["files_override"] != None:
-                print("looking.........")
                 if file["id"] in dataset["files_override"]:
                     over_path = dataset["files_override"][file["id"]]
                     print("file override", file["id"], over_path)
@@ -144,10 +148,6 @@ def handleLocal(dataset, storage):
                     pass
                 else:
                     raise
-
-            #if path == "." and over_path != ".":
-            #    src_path = "../"+over_path
-            #    link_path = stagedir+"/"+over_path
 
             print("making symlink src:", src_path, "dest:", link_path, "(dest is the link to create)")
             try: 
