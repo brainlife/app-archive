@@ -13,6 +13,7 @@ import sys
 import base64
 import requests
 from pathlib import Path
+import datetime
 
 with open("config.json") as config_json:
     config = json.load(config_json)
@@ -42,6 +43,8 @@ def handleXNAT(dataset):
         session = dataset["storage_config"]["meta"]["session"]
 
     datatype_id=dataset["datatype_id"]
+    datatype_name=dataset["datatype_name"]
+    create_date=dataset["create_date"]
 
     auth=(token, secret)
 
@@ -51,11 +54,14 @@ def handleXNAT(dataset):
     print("creating sucject", ret)
 
     url+="/experiments/"+session
-    ret = requests.put(url+"?xnat:mrSessionData/date=01/02/07", auth=auth)
+    
+    now = datetime.fromisoformat(create_date)
+    ret = requests.put(url+"?xnat:mrSessionData/date="+now.strftime("%x"), auth=auth)
     print("creating session(experiment)", ret)
 
+    #https://wiki.xnat.org/display/XAPI/Image+Session+Scans+API
     url+="/scans/"+dataset_id
-    ret = requests.put(url+"?xsiType=xnat:mrScanData&xnat:mrScanData/type="+datatype_id, auth=auth)
+    ret = requests.put(url+"?xsiType=xnat:mrScanData&xnat:mrScanData/type="+datatype_name+"&xnat:mrScanData/note"+datatype_id, auth=auth)
     print("creating scan", ret)
 
     #finally, we can upload the file (let it self extract)
@@ -65,7 +71,7 @@ def handleXNAT(dataset):
     print("archiving", datadir)
     zip_process = subprocess.Popen(["zip", "-r", "-", "."], stdout=subprocess.PIPE, cwd=datadir)
     formdata = {
-        'upload': ('test.zip', zip_process.stdout),
+        'upload': ('xnat.zip', zip_process.stdout),
     }
     params = {
         'extract': True
