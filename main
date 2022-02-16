@@ -79,6 +79,9 @@ def handleXNAT(dataset):
 
     #upload provenance info (can't get streaming to work..)
     prov = requests.get(dataset["provURL"])
+    formdata = {
+        'upload': ('provenance.json', prov.content)
+    }
     ret = requests.post(url, files=formdata, auth=auth)
     print("uploading prov file", ret)
 
