@@ -77,14 +77,10 @@ def handleXNAT(dataset):
     ret = requests.post(url, files=formdata, params=params, auth=auth)
     print("uploading file", ret)
 
-    #upload provenance info
+    #upload provenance info (can't get streaming to work..)
     prov = requests.get(dataset["provURL"])
-    formdata = {
-        'upload': ('provenance.json', prov.raw)
-    }
     ret = requests.post(url, files=formdata, auth=auth)
     print("uploading prov file", ret)
-
 
 def handleLocal(dataset, storage):
     dest=os.environ["BRAINLIFE_ARCHIVE_"+storage]+"/"+dataset["project"]
