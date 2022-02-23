@@ -22,7 +22,11 @@ product = {}
 
 def handleXNAT(dataset):
     #decrypt xnat secret
-    openssl = subprocess.Popen(["openssl", "rsautl", "-inkey", str(Path.home())+"/.ssh/configEncrypt.key", "-decrypt"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    configenckey = str(Path.home())+"/.ssh/configEncrypt.key"
+    if "BRAINLIFE_CONFIGENCKEY" in os.environ:
+        configenckey = os.environ["BRAINLIFE_CONFIGENCKEY"]
+
+    openssl = subprocess.Popen(["openssl", "rsautl", "-inkey", configenckey, "-decrypt"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     openssl.stdin.write(base64.b64decode(dataset["storage_config"]["secretEnc"]))
     secret = openssl.communicate()[0]
     openssl.stdin.close()
