@@ -7,7 +7,7 @@
 
 set -ex
 
-timeout 240 singularity exec -e docker://brainlife/archive ./archive.py
+timeout 240 singularity exec docker://brainlife/archive ./archive.py
 echo "done"
 
 
