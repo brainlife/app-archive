@@ -15,6 +15,30 @@ with open("config.json") as config_json:
 
 product = {}
 
+def handleCloud(dataset):
+    dataset_id = dataset["dataset_id"]
+    storage = dataset["storage"]
+    if storage == "cloud":
+        #cloud storage archive bypass
+        #this is a no-op, just to make sure we don't try to archive anything
+        cloud_url = dataset["storage_config"]["url"] or dataset["cloud"]
+        if not cloud_url:
+            print("cloud_url not found in dataset, getting from API")
+            base_api = "https://brainlife.io/api/warehouse/"
+            response = requests.get(base_api+"cloud/download/cloud-url/" + dataset_id)
+            cloud_url = response.text.strip()
+            if not cloud_url:
+                print("cloud_url not found in dataset, exiting")
+                sys.exit(1)
+        print("cloud_url found in dataset, skipping archive")
+        print(f'handleCloud: using cloud_url for {dataset_id}: {cloud_url}')
+        product[dataset_id] = {
+            "cloud_url": cloud_url,
+            "size": 0,
+            "archive": False,
+        }
+
+
 def handleXNAT(dataset):
     #decrypt xnat secret
     configenckey = str(Path.home())+"/.ssh/configEncrypt.key"
@@ -198,6 +222,8 @@ for dataset in config["datasets"]:
     storage=dataset["storage"]
     if storage == "xnat":
         handleXNAT(dataset)
+    elif storage == "cloud":
+        handleCloud(dataset)
     else:
         handleLocal(dataset, storage)
 
