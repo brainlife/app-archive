@@ -84,7 +84,130 @@ def handleXNAT(dataset):
     ret = requests.post(url, files=formdata, auth=auth)
     print("uploading prov file", ret)
 
+def handleS3FS(dataset):
+    """Handle S3FS storage - copy files directly to mounted S3FS filesystem"""
+    
+    dataset_id = dataset["dataset_id"]
+    project_id = dataset["project"]
+    datadir = dataset["dir"]
+    
+    # Get S3FS mount point from environment or use default
+    s3fs_mount = os.environ.get("BRAINLIFE_ARCHIVE_s3fs", "/mnt/s3fs")
+
+    # Create destination path: /mnt/s3fs/archive/PROJECT_ID/DATASET_ID/
+    dest_base = f"{s3fs_mount}/archive/{project_id}"
+    dest_path = f"{dest_base}/{dataset_id}"
+    
+    print(f"S3FS Archive: {datadir} -> {dest_path}")
+    
+    # Create project directory if it doesn't exist
+    try:
+        os.makedirs(dest_base, exist_ok=True)
+        print(f"Created S3FS project directory: {dest_base}")
+    except OSError as exc:
+        print(f"Error creating S3FS project directory: {exc}")
+        sys.exit(1)
+    
+    # Remove destination if it exists (for overwrite)
+    if os.path.exists(dest_path):
+        print(f"Removing existing S3FS dataset: {dest_path}")
+        subprocess.call(["rm", "-rf", dest_path])
+    
+    # Handle different file structures (old vs new archive method)
+    if "files" in dataset and dataset["files"] is not None:
+        # Old archive method - need to stage files with proper structure
+        print("Using old archive method with file staging")
+        
+        # Create destination directory
+        os.makedirs(dest_path, exist_ok=True)
+        
+        # Stage and copy each file/directory
+        for file_def in dataset["files"]:
+            if "filename" in file_def:
+                src_name = file_def["filename"]
+            else:
+                src_name = file_def["dirname"]
+            
+            # Handle file overrides
+            actual_src = src_name
+            if "files_override" in dataset and dataset["files_override"] is not None:
+                if file_def["id"] in dataset["files_override"]:
+                    actual_src = dataset["files_override"][file_def["id"]]
+                    print(f"File override: {file_def['id']} -> {actual_src}")
+            
+            src_path = os.path.join(datadir, actual_src)
+            dest_file_path = os.path.join(dest_path, src_name)
+            
+            # Special handling for "." path (copy entire directory contents)
+            if src_name == ".":
+                if actual_src != ".":
+                    src_path = os.path.join(datadir, actual_src)
+                else:
+                    src_path = datadir
+                
+                print(f"Copying entire directory contents from {src_path}")
+                # Copy all contents of source directory to destination
+                for item in os.listdir(src_path):
+                    item_src = os.path.join(src_path, item)
+                    item_dest = os.path.join(dest_path, item)
+                    
+                    if os.path.isdir(item_src):
+                        subprocess.call(["cp", "-r", item_src, item_dest])
+                    else:
+                        subprocess.call(["cp", item_src, item_dest])
+                break
+            
+            # Check if source exists (some files are optional)
+            if not os.path.exists(src_path):
+                if file_def.get("required", False):
+                    print(f"Required file missing: {src_path}")
+                    sys.exit(1)
+                else:
+                    print(f"Optional file missing, skipping: {src_path}")
+                    continue
+            
+            # Create parent directory for destination file if needed
+            dest_parent = os.path.dirname(dest_file_path)
+            if dest_parent != dest_path:
+                os.makedirs(dest_parent, exist_ok=True)
+            
+            # Copy file or directory
+            if os.path.isdir(src_path):
+                subprocess.call(["cp", "-r", src_path, dest_file_path])
+            else:
+                subprocess.call(["cp", src_path, dest_file_path])
+            
+            print(f"Copied: {src_path} -> {dest_file_path}")
+    
+    else:
+        # New archive method - clean copy of entire directory
+        print("Using new archive method - copying entire directory")
+        
+        # Use rsync for efficient directory copying
+        cmd = ["rsync", "-av", f"{datadir}/", f"{dest_path}/"]
+        result = subprocess.call(cmd)
+        
+        if result != 0:
+            print(f"Error copying directory with rsync: {result}")
+            sys.exit(1)
+        
+        print(f"Successfully copied {datadir} to {dest_path}")
+    
+    # Calculate total size of archived data for product.json
+    total_size = 0
+    for root, dirs, files in os.walk(dest_path):
+        for file in files:
+            file_path = os.path.join(root, file)
+            try:
+                total_size += os.path.getsize(file_path)
+            except OSError:
+                pass  # Skip files that can't be accessed
+    
+    product[dataset_id] = {"size": total_size}
+    print(f"S3FS archive complete. Dataset {dataset_id} size: {total_size} bytes")
+
 def handleLocal(dataset, storage):
+    dataset_id = dataset["dataset_id"]
     dest=os.environ["BRAINLIFE_ARCHIVE_"+storage]+"/"+dataset["project"]
     try:
         os.makedirs(dest)
@@ -172,7 +295,7 @@ def handleLocal(dataset, storage):
         files = files_dedupe
 
     else:
-        #new method is clean! just grab everything under "dir"
+        #new archive method is clean! just grab everything under "dir"
         files.append("-C")
         files.append(dataset["dir"])
         for file in os.listdir(dataset["dir"]):
@@ -198,11 +321,10 @@ for dataset in config["datasets"]:
     storage=dataset["storage"]
     if storage == "xnat":
         handleXNAT(dataset)
+    elif storage == "s3fs":
+        handleS3FS(dataset)
     else:
         handleLocal(dataset, storage)
 
 with open('product.json', 'w') as productjson:
     json.dump(product, productjson)
-
-
-
