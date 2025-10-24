@@ -182,15 +182,16 @@ def handleS3FS(dataset):
     else:
         # New archive method - clean copy of entire directory
         print("Using new archive method - copying entire directory")
+
+        subprocess.call(["cp", "-r", datadir, dest_path])
         
-        # Use shutil for directory copying (more portable than rsync)
-        import shutil
-        try:
-            shutil.copytree(datadir, dest_path, dirs_exist_ok=True)
-            print(f"Successfully copied {datadir} to {dest_path}")
-        except Exception as e:
-            print(f"Error copying directory: {e}")
-            sys.exit(1)
+        #import shutil
+        #try:
+        #    shutil.copytree(datadir, dest_path, dirs_exist_ok=True)
+        #    print(f"Successfully copied {datadir} to {dest_path}")
+        #except Exception as e:
+        #    print(f"Error copying directory: {e}")
+        #    sys.exit(1)
     
     # Calculate total size of archived data for product.json
     total_size = 0
