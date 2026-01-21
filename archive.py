@@ -206,6 +206,102 @@ def handleS3FS(dataset):
     product[dataset_id] = {"size": total_size}
     print(f"S3FS archive complete. Dataset {dataset_id} size: {total_size} bytes")
 
+def handleS3FSEmbargo(dataset):
+    """Handle S3FS-Embargo storage - copy files directly to mounted S3FS filesystem (embargoed prefix)."""
+
+    dataset_id = dataset["dataset_id"]
+    project_id = dataset["project"]
+    datadir = dataset["dir"]
+
+    # Prefer same convention as app-stage
+    s3fs_mount = os.environ.get("BRAINLIFE_s3fs_embargo", "/mnt/s3fs")
+
+    # Create destination path: <mount>/embargoed/PROJECT_ID/DATASET_ID/
+    dest_base = os.path.join(s3fs_mount, "embargoed", str(project_id))
+    dest_path = os.path.join(dest_base, str(dataset_id))
+
+    print(f"S3FS-Embargo Archive: {datadir} -> {dest_path}")
+
+    try:
+        os.makedirs(dest_base, exist_ok=True)
+        print(f"Created S3FS-Embargo project directory: {dest_base}")
+    except OSError as exc:
+        print(f"Error creating S3FS-Embargo project directory: {exc}")
+        sys.exit(1)
+
+    if os.path.exists(dest_path):
+        print(f"Removing existing S3FS-Embargo dataset: {dest_path}")
+        subprocess.call(["rm", "-rf", dest_path])
+
+    if "files" in dataset and dataset["files"] is not None:
+        print("Using old archive method with file staging")
+        os.makedirs(dest_path, exist_ok=True)
+
+        for file_def in dataset["files"]:
+            if "filename" in file_def:
+                src_name = file_def["filename"]
+            else:
+                src_name = file_def["dirname"]
+
+            actual_src = src_name
+            if "files_override" in dataset and dataset["files_override"] is not None:
+                if file_def["id"] in dataset["files_override"]:
+                    actual_src = dataset["files_override"][file_def["id"]]
+                    print(f"File override: {file_def['id']} -> {actual_src}")
+
+            # Special handling for "." (copy all contents)
+            if src_name == ".":
+                src_path = datadir if actual_src == "." else os.path.join(datadir, actual_src)
+                print(f"Copying entire directory contents from {src_path}")
+                for item in os.listdir(src_path):
+                    item_src = os.path.join(src_path, item)
+                    item_dest = os.path.join(dest_path, item)
+                    if os.path.isdir(item_src):
+                        subprocess.call(["cp", "-r", item_src, item_dest])
+                    else:
+                        subprocess.call(["cp", item_src, item_dest])
+                break
+
+            src_path = os.path.join(datadir, actual_src)
+            dest_file_path = os.path.join(dest_path, src_name)
+
+            if not os.path.exists(src_path):
+                if file_def.get("required", False):
+                    print(f"Required file missing: {src_path}")
+                    sys.exit(1)
+                else:
+                    print(f"Optional file missing, skipping: {src_path}")
+                    continue
+
+            dest_parent = os.path.dirname(dest_file_path)
+            if dest_parent != dest_path:
+                os.makedirs(dest_parent, exist_ok=True)
+
+            if os.path.isdir(src_path):
+                subprocess.call(["cp", "-r", src_path, dest_file_path])
+            else:
+                subprocess.call(["cp", src_path, dest_file_path])
+
+            print(f"Copied: {src_path} -> {dest_file_path}")
+
+    else:
+        print("Using new archive method - copying entire directory")
+        subprocess.call(["cp", "-r", datadir, dest_path])
+
+    # Calculate total size for product.json
+    total_size = 0
+    for root, dirs, files in os.walk(dest_path):
+        for file in files:
+            file_path = os.path.join(root, file)
+            try:
+                total_size += os.path.getsize(file_path)
+            except OSError:
+                pass
+
+    product[dataset_id] = {"size": total_size}
+    print(f"S3FS-Embargo archive complete. Dataset {dataset_id} size: {total_size} bytes")
+
+
 def handleLocal(dataset, storage):
     dataset_id = dataset["dataset_id"]
     dest=os.environ["BRAINLIFE_ARCHIVE_"+storage]+"/"+dataset["project"]
@@ -323,6 +419,8 @@ for dataset in config["datasets"]:
         handleXNAT(dataset)
     elif storage == "s3fs":
         handleS3FS(dataset)
+    elif storage == "s3fs-embargo":
+        handleS3FSEmbargo(dataset)
     else:
         handleLocal(dataset, storage)
 
