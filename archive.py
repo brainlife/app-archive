@@ -214,7 +214,7 @@ def handleS3FSEmbargo(dataset):
     datadir = dataset["dir"]
 
     # Prefer same convention as app-stage
-    s3fs_mount = os.environ.get("BRAINLIFE_s3fs_embargo", "/mnt/s3fs")
+    s3fs_mount = os.environ.get("BRAINLIFE_ARCHIVE_embargo", "/mnt/s3fs")
 
     # Create destination path: <mount>/embargoed/PROJECT_ID/DATASET_ID/
     dest_base = os.path.join(s3fs_mount, "embargoed", str(project_id))
