@@ -15,6 +15,54 @@ with open("config.json") as config_json:
 
 product = {}
 
+
+def resolve_dataset_dir(dataset):
+    """
+    Resolve the source directory for a dataset.
+
+    Priority:
+    1. dataset["dir"] if it already exists locally
+    2. shared task storage only when explicitly allowed by env
+       (used for archive tasks whose deps came from aws_batch)
+
+    Shared task storage lookup order:
+       - /mnt/s3fs/tasks/<taskid>/<subdir>
+       - /mnt/s3/tasks/<taskid>/<subdir>
+    """
+    datadir = dataset["dir"]
+
+    if os.path.exists(datadir):
+        print(f"Using local dataset dir: {datadir}")
+        return datadir
+
+    allow_shared_fallback = os.environ.get("BRAINLIFE_ARCHIVE_ALLOW_SHARED_TASK_FALLBACK") == "1"
+    if not allow_shared_fallback:
+        raise FileNotFoundError(
+            f"Local dataset dir does not exist and shared fallback is disabled. "
+            f"dataset['dir']={datadir!r}"
+        )
+
+    parts = Path(datadir).parts
+    if len(parts) >= 3 and parts[0] in ("..", "."):
+        task_id = parts[1]
+        subdir = parts[2]
+
+        candidates = [
+            os.path.join("/mnt/s3fs", "tasks", task_id, subdir),
+            os.path.join("/mnt/s3", "tasks", task_id, subdir),
+        ]
+
+        for candidate in candidates:
+            if os.path.exists(candidate):
+                print(f"Local dataset dir missing, falling back to shared task dir: {candidate}")
+                return candidate
+
+    raise FileNotFoundError(
+        f"Could not resolve dataset dir for archive. "
+        f"dataset['dir']={datadir!r}, shared_fallback={allow_shared_fallback}"
+    )
+
+
 def handleXNAT(dataset):
     #decrypt xnat secret
     configenckey = str(Path.home())+"/.ssh/configEncrypt.key"
@@ -32,7 +80,7 @@ def handleXNAT(dataset):
     token=dataset["storage_config"]["token"]
     project=dataset["storage_config"]["project"]
     path=dataset["storage_config"]["path"]
-    datadir=dataset["dir"]
+    datadir=resolve_dataset_dir(dataset)
 
     subject=dataset["storage_config"]["meta"]["subject"]
 
@@ -89,7 +137,7 @@ def handleS3FS(dataset):
     
     dataset_id = dataset["dataset_id"]
     project_id = dataset["project"]
-    datadir = dataset["dir"]
+    datadir = resolve_dataset_dir(dataset)
     
     # Get S3FS mount point from environment or use default
     s3fs_mount = os.environ.get("BRAINLIFE_ARCHIVE_s3fs", "/mnt/s3fs")
@@ -182,16 +230,7 @@ def handleS3FS(dataset):
     else:
         # New archive method - clean copy of entire directory
         print("Using new archive method - copying entire directory")
-
         subprocess.call(["cp", "-r", datadir, dest_path])
-        
-        #import shutil
-        #try:
-        #    shutil.copytree(datadir, dest_path, dirs_exist_ok=True)
-        #    print(f"Successfully copied {datadir} to {dest_path}")
-        #except Exception as e:
-        #    print(f"Error copying directory: {e}")
-        #    sys.exit(1)
     
     # Calculate total size of archived data for product.json
     total_size = 0
@@ -211,7 +250,7 @@ def handleS3FSEmbargo(dataset):
 
     dataset_id = dataset["dataset_id"]
     project_id = dataset["project"]
-    datadir = dataset["dir"]
+    datadir = resolve_dataset_dir(dataset)
 
     # Prefer same convention as app-stage
     s3fs_mount = os.environ.get("BRAINLIFE_ARCHIVE_embargo", "/mnt/s3fs")
@@ -305,6 +344,7 @@ def handleS3FSEmbargo(dataset):
 def handleLocal(dataset, storage):
     dataset_id = dataset["dataset_id"]
     dest=os.environ["BRAINLIFE_ARCHIVE_"+storage]+"/"+dataset["project"]
+    datadir = resolve_dataset_dir(dataset)
     try:
         os.makedirs(dest)
     except OSError as exc:
@@ -321,7 +361,7 @@ def handleLocal(dataset, storage):
         #old archive method used !
         #we need to re-stage everything (using dataset._id as staging dirname) so that we can handle file_override
         #let's use dataset id as staging dir inside input directory (bad?)
-        stagedir = dataset["dir"]+"/"+dataset_id
+        stagedir = datadir+"/"+dataset_id
 
         files.append("-C")
         files.append(stagedir)
@@ -340,7 +380,7 @@ def handleLocal(dataset, storage):
                     print("file override", file["id"], over_path)
 
             if path == ".":
-                stagedir=dataset["dir"]
+                stagedir = datadir
                 if over_path != ".":
                     stagedir += "/"+over_path
                 print("dot(.) path used.. using all local files as %s" % stagedir)
@@ -356,9 +396,9 @@ def handleLocal(dataset, storage):
 
             print("making sure stagedir exists", stagedir)
             #I only have to do this once, but I have to do it before I create the first symlink
-            #I also don't know if I have over_path == "." until I start looping.. 
+            #I also don't know if I have over_path == "." until I start looping..
             #let's just check this for each file
-            try: 
+            try:
                 os.makedirs(stagedir)
             except OSError as exc:
                 if exc.errno == errno.EEXIST:
@@ -367,7 +407,7 @@ def handleLocal(dataset, storage):
                     raise
 
             print("making symlink src:", src_path, "dest:", link_path, "(dest is the link to create)")
-            try: 
+            try:
                 os.symlink(src_path, link_path)
             except OSError as exc:
                 if exc.errno == errno.EEXIST:
@@ -377,24 +417,24 @@ def handleLocal(dataset, storage):
                     raise
 
             #some file/dir are not required
-            if os.path.exists(dataset["dir"]+"/"+over_path):
+            if os.path.exists(datadir+"/"+over_path):
                 files.append(path)
             elif file["required"] == True:
-                print("required file is missing:"+dataset["dir"]+"/"+path)
+                print("required file is missing:"+datadir+"/"+path)
                 sys.exit(1)
 
         #dedupe the files
         files_dedupe = []
         for f in files:
-          if f not in files_dedupe:
-            files_dedupe.append(f)
+            if f not in files_dedupe:
+                files_dedupe.append(f)
         files = files_dedupe
 
     else:
         #new archive method is clean! just grab everything under "dir"
         files.append("-C")
-        files.append(dataset["dir"])
-        for file in os.listdir(dataset["dir"]):
+        files.append(datadir)
+        for file in os.listdir(datadir):
             files.append(file)
 
     #archive!
