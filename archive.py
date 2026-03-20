@@ -418,7 +418,7 @@ for dataset in config["datasets"]:
 
     # If dir is an S3 URI (e.g. from a Batch task), remap to the local S3 mount path.
     if dataset["dir"].startswith("s3://"):
-        # s3://brainlife/tasks/... -> /mnt/s3/tasks/...
+        # s3://brainlife/tasks/... -> /mnt/s3fs/tasks/...
         s3_path = dataset["dir"].split("/", 3)[-1]  # strips "s3://bucket/"
         s3fs_mount = os.environ.get("BRAINLIFE_ARCHIVE_s3fs", "/mnt/s3fs")
         local_path = f"{s3fs_mount}/{s3_path}"
