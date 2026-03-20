@@ -415,6 +415,15 @@ for dataset in config["datasets"]:
         dataset_id = dataset["dataset"]["_id"]
 
     storage=dataset["storage"]
+
+    # If dir is an S3 URI (e.g. from a Batch task), remap to the local S3 mount path.
+    if dataset["dir"].startswith("s3://"):
+        # s3://brainlife/tasks/... -> /mnt/s3/tasks/...
+        s3_path = dataset["dir"].split("/", 3)[-1]  # strips "s3://bucket/"
+        local_path = f"/mnt/s3fs/{s3_path}"
+        print(f"Remapping S3 URI to mount path: {dataset['dir']} -> {local_path}")
+        dataset["dir"] = local_path
+    
     if storage == "xnat":
         handleXNAT(dataset)
     elif storage == "s3fs":
