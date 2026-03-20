@@ -22,12 +22,10 @@ def resolve_dataset_dir(dataset):
 
     Priority:
     1. dataset["dir"] if it already exists locally
-    2. shared task storage only when explicitly allowed by env
-       (used for archive tasks whose deps came from aws_batch)
-
-    Shared task storage lookup order:
-       - /mnt/s3fs/tasks/<taskid>/<subdir>
-       - /mnt/s3/tasks/<taskid>/<subdir>
+    2. if dataset["dir"] is an s3:// URI and shared fallback is allowed,
+       map it to /mnt/s3fs/... or /mnt/s3/...
+    3. if dataset["dir"] looks like ../<taskid>/<subdir> and shared fallback is allowed,
+       map it to /mnt/s3fs/tasks/<taskid>/<subdir> or /mnt/s3/tasks/<taskid>/<subdir>
     """
     datadir = dataset["dir"]
 
@@ -42,24 +40,44 @@ def resolve_dataset_dir(dataset):
             f"dataset['dir']={datadir!r}"
         )
 
-    parts = Path(datadir).parts
-    if len(parts) >= 3 and parts[0] in ("..", "."):
-        task_id = parts[1]
-        subdir = parts[2]
+    candidates = []
 
-        candidates = [
-            os.path.join("/mnt/s3fs", "tasks", task_id, subdir),
-            os.path.join("/mnt/s3", "tasks", task_id, subdir),
-        ]
+    # Case 1: s3://brainlife/tasks/<taskid>/<subdir>[/...]
+    if datadir.startswith("s3://"):
+        # strip scheme and bucket, keep key only
+        # s3://brainlife/tasks/abc/output -> tasks/abc/output
+        without_scheme = datadir[len("s3://"):]
+        parts = without_scheme.split("/", 1)
+        if len(parts) == 2:
+            bucket, key = parts
+            if bucket != "brainlife":
+                raise FileNotFoundError(
+                    f"Unsupported bucket for archive fallback: {bucket}"
+                )
+            candidates.extend([
+                os.path.join("/mnt/s3fs", key),
+                os.path.join("/mnt/s3", key),
+            ])
 
-        for candidate in candidates:
-            if os.path.exists(candidate):
-                print(f"Local dataset dir missing, falling back to shared task dir: {candidate}")
-                return candidate
+    # Case 2: ../<taskid>/<subdir>
+    else:
+        parts = Path(datadir).parts
+        if len(parts) >= 3 and parts[0] in ("..", "."):
+            task_id = parts[1]
+            subdir = parts[2]
+            candidates.extend([
+                os.path.join("/mnt/s3fs", "tasks", task_id, subdir),
+                os.path.join("/mnt/s3", "tasks", task_id, subdir),
+            ])
+
+    for candidate in candidates:
+        if os.path.exists(candidate):
+            print(f"Local dataset dir missing, falling back to shared task dir: {candidate}")
+            return candidate
 
     raise FileNotFoundError(
         f"Could not resolve dataset dir for archive. "
-        f"dataset['dir']={datadir!r}, shared_fallback={allow_shared_fallback}"
+        f"dataset['dir']={datadir!r}, shared_fallback={allow_shared_fallback}, candidates={candidates}"
     )
 
 
